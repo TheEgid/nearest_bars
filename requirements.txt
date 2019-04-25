@@ -1,0 +1,2 @@
+geopy==1.19.0
+yandex_geocoder==1.0.0
