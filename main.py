@@ -38,14 +38,13 @@ def get_nearest_bars(bars, amount_of_bars=5):
 
 
 def storage_json_io(in_data, storage_file_pathname, encoding='utf-8'):
-    if not os.path.exists(storage_file_pathname):
-        with open(storage_file_pathname, 'w', encoding=encoding) as file:
-            json.dump(in_data, file, ensure_ascii=False)
-        return in_data
-    else:
-        with open(storage_file_pathname, 'r', encoding=encoding) as file:
-            out_data = json.load(file)
-        return out_data
+    try:
+        with open(storage_file_pathname, 'r', encoding=encoding) as json_file:
+            in_data = json.load(json_file)
+    except (FileNotFoundError, IOError):
+        with open(storage_file_pathname, 'w', encoding=encoding) as json_file:
+            json.dump(in_data, json_file, ensure_ascii=False)
+    return in_data
 
 
 def get_all_bars_with_distance(bars, my_address, temp_file='temporary_data.json'):
