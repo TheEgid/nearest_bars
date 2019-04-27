@@ -9,7 +9,10 @@ __pycache__/
 *.pickle
 *.log
 *.txt
-images/
+*.html
+*.json
+
+!bars_db.json
 !requirements.txt
 
 =======
@@ -25,3 +28,4 @@ images/
 !requirements.txt
 
 >>>>>>> faff12b6ee8caef68ef47db8b3468daf3df2a95e
+temporary_data.json

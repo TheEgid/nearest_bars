@@ -1,2 +1,4 @@
+folium==0.8.3
 geopy==1.19.0
+Flask==1.0.2
 yandex_geocoder==1.0.0
