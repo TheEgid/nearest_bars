@@ -9,10 +9,8 @@ __pycache__/
 *.pickle
 *.log
 *.txt
-*.json
 images/
 !requirements.txt
-!bars_db.json
 
 =======
 # Byte-compiled / optimized / DLL files

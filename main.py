@@ -1,4 +1,3 @@
-import os
 import json
 import pprint
 import logging
@@ -37,32 +36,35 @@ def get_nearest_bars(bars, amount_of_bars=5):
     return bars[:amount_of_bars]
 
 
-def storage_json_io(in_data, storage_file_pathname, encoding='utf-8'):
-    try:
-        with open(storage_file_pathname, 'r', encoding=encoding) as json_file:
-            in_data = json.load(json_file)
-    except (FileNotFoundError, IOError):
-        with open(storage_file_pathname, 'w', encoding=encoding) as json_file:
-            json.dump(in_data, json_file, ensure_ascii=False)
-    return in_data
+def storage_json_io(storage_file_pathname):
+    def memoize(func):
+        def decorate(*args, **kwargs):
+            try:
+                with open(storage_file_pathname, 'r', encoding='utf-8') as file:
+                    data = json.load(file)
+                return data
+            except (FileNotFoundError, IOError):
+                data = func(*args, **kwargs)
+                with open(storage_file_pathname, 'w', encoding='utf-8') as file:
+                    json.dump(data, file, ensure_ascii=False)
+                return data
+        return decorate
+    return memoize
 
 
-def get_all_bars_with_distance(bars, my_address, temp_file='temporary_data.json'):
-    bars_with_distance = []
-    if not os.path.exists(temp_file):
-        bars_with_distance = [get_bar_with_distance(bar, my_address) for bar in bars]
-    bars_with_distance = storage_json_io(in_data=bars_with_distance, storage_file_pathname=temp_file)
-    return bars_with_distance
+@storage_json_io(storage_file_pathname='temporary_data.json')
+def get_all_bars_with_distance(bars, my_address):
+    return [get_bar_with_distance(bar, my_address) for bar in bars]
 
 
-logging.basicConfig(level=logging.INFO)
-my_address = 'Красная площадь'
-with open('bars_db.json', 'r') as file:
-    bars = json.load(file)
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
+    my_address = 'Красная площадь'
+    with open('bars_db.json', 'r') as file:
+        bars = json.load(file)
 
-print(len(bars))
-bars_with_distance = get_all_bars_with_distance(bars, my_address)
-pprint.pprint(get_nearest_bars(bars_with_distance))
+    bars_with_distance = get_all_bars_with_distance(bars, my_address)
+    pprint.pprint(get_nearest_bars(bars_with_distance))
 
 
 
