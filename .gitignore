@@ -8,5 +8,6 @@ __pycache__/
 *.log
 *.txt
 *.json
+*.html
 !requirements.txt
 
