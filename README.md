@@ -6,7 +6,7 @@
 
 ### Как установить
 
-Скачиваем файлы и переходим в папку nearest_bars. Сюда же сохраняем json файл с базой данных баров Москвы - [скачать тут](https://drive.google.com/open?id=1Fc9d8qsyoUsE7UaHczpxLdGNmiS3If8z)
+Скачиваем файлы и переходим в папку nearest_bars. Сюда же сохраняем json файл с базой данных баров Москвы - [скачать тут](https://drive.google.com/open?id=1gF3NpK95AiKsAjJ2Uv-gQIA-d_bbKyEN)
 
 Python 3.7 должен быть уже установлен. Затем используйте pip (или pip3, если есть конфликт с Python2) для установки зависимостей:
 
