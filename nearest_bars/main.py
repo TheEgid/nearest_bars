@@ -4,6 +4,7 @@ import logging
 from flask import Flask
 import folium
 import argparse
+import sys
 from yandex_geocoder import Client
 from geopy import distance
 from services import storage_json_io_decorator
@@ -55,10 +56,10 @@ def transfer_html(temp_html_filepath='index.html'):
         return html_file.read()
 
 
-def start_flask_server(func, ip, rule='/'):
+def start_flask_server(func, host, port, rule='/'):
     activate_job = Flask(__name__)
     activate_job.add_url_rule(rule, '', func)
-    activate_job.run(ip, debug=False)
+    activate_job.run(host, port, debug=False)
 
 
 def save_html_bars_map(bars, my_address, temp_html_filepath='index.html'):
@@ -91,6 +92,8 @@ def get_args_parser():
 
 
 if __name__ == '__main__':
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    sys.path.insert(0, os.path.split(dir_path)[0])
     logging.basicConfig(level=logging.INFO)
     temp_file = 'temporary_data.json'
     args = get_args_parser().parse_args()
@@ -109,4 +112,4 @@ if __name__ == '__main__':
         bars_data = json.load(fl)
 
     draw_nearest_bars_map(location_address=my_address, bars=bars_data)
-    start_flask_server(func=transfer_html, ip='127.0.0.1')
+    start_flask_server(func=transfer_html, host='0.0.0.0', port=8080)
