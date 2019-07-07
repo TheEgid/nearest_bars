@@ -6,14 +6,14 @@
 
 ### NEW! Установка и использование в тестовом режиме с docker-compose
 
-## Вариант № 1 - создание образа-контейнера
+Вариант № 1 - создание образа-контейнера
 
 Сохраняем файлы на сервер linux и переходим в папку nearest_bars. Сюда же сохраняем json файл с базой данных баров Москвы - [скачать тут](https://drive.google.com/open?id=1gF3NpK95AiKsAjJ2Uv-gQIA-d_bbKyEN)
 
 ```
 sudo docker-compose up --build
 ```
-## Вариант # 2 - использование готового образа-контейнера [https://hub.docker.com/r/theegid/nearest_bars](https://hub.docker.com/r/theegid/nearest_bars)
+Вариант # 2 - использование готового образа-контейнера [https://hub.docker.com/r/theegid/nearest_bars](https://hub.docker.com/r/theegid/nearest_bars)
 
 ```
 sudo docker pull theegid/nearest_bars
