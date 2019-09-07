@@ -1,10 +1,10 @@
-FROM debian:buster
+FROM python:3.7.4
 
-RUN apt-get clean && apt-get update
-RUN apt-get install -qy apt-utils
-RUN apt-get install -qy python3-numpy
-RUN apt-get install -qy python3-psycopg2
-RUN apt-get install -qy python3-pip
+RUN apt-get update && apt-get install -qy \
+    apt-utils \
+    python3-numpy \
+    python3-psycopg2 \
+    python3-pip
 
 EXPOSE 8080
 WORKDIR /opt
