@@ -6,30 +6,26 @@
 
 ### NEW! Установка и использование в тестовом режиме с docker и docker-compose
 
-Вариант № 1 - создание образа 
 
-Сохраняем файлы на сервер linux и переходим в папку nearest_bars. Сюда же сохраняем json файл с базой данных баров Москвы - [скачать тут](https://drive.google.com/open?id=1gF3NpK95AiKsAjJ2Uv-gQIA-d_bbKyEN)
+Сохраняем файлы на сервер linux и переходим в папку nearest_bars. Сюда же распаковываем архив с файлом базы данных баров Москвы - [скачать тут](https://yadi.sk/d/AuhpRpLRgD-avA)
 
 ```
 sudo docker-compose up --build
 ```
 
-Вариант # 2 - использование готового образа [https://hub.docker.com/r/theegid/nearest_bars](https://hub.docker.com/r/theegid/nearest_bars)
 
-```
-sudo docker pull theegid/nearest_bars
-```
 запуск контейнера из образа -
 
 ```
-sudo docker run -d -p 8080:8080 theegid/nearest_bars
+sudo docker run -d -p 8080:8080 nearest_bars_web
 ```
 
 Сервис будет установлен и запущен на сервере на порту 8080.
 
 ### Как установить
 
-Скачиваем файлы и переходим в папку nearest_bars. Сюда же сохраняем json файл с базой данных баров Москвы - [скачать тут](https://drive.google.com/file/d/1rkq1aiRyfR3uERRUBJg2ARSZ_0mVg8WT/view?usp=sharing)
+Скачиваем файлы и переходим в папку nearest_bars. Сюда же распаковываем архив с файлом базы данных баров Москвы - [скачать тут](https://yadi.sk/d/AuhpRpLRgD-avA)
+
 
 Python 3.7 должен быть уже установлен. Затем используйте pip (или pip3, если есть конфликт с Python2) для установки зависимостей:
 
