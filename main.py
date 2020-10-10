@@ -1,14 +1,18 @@
-import json
 import os
-import logging
-from flask import Flask
-import folium
 import argparse
-import sys
-from geopy import distance
+import platform
+import json
 import requests
+import logging
+import folium
+from flask import Flask
+from geopy import distance
 from dotenv import load_dotenv
+
 from services import storage_json_io_decorator
+
+
+TEMP_FILE = 'temporary_data.json'
 
 
 def get_coordinates(_address, locationiq_org_token):
@@ -26,13 +30,13 @@ def get_coordinates(_address, locationiq_org_token):
     return float(address['lat']), float(address['lon'])
 
 
-def get_distance_km(start_address, finish_address):
+def get_distance_km(start_address, finish_address, token):
     if isinstance(finish_address, str):
-        finish_address = get_coordinates(finish_address, API_TOKEN)
+        finish_address = get_coordinates(finish_address, token)
     return distance.distance(start_address, finish_address).km
 
 
-def get_bar_info(bar_data, start_address):
+def get_bar_info(bar_data, start_address, token):
     bar_info = {}
     coordinates = list(bar_data['geoData']['coordinates'])
     coordinates.reverse()
@@ -40,7 +44,7 @@ def get_bar_info(bar_data, start_address):
     bar_info['latidude'] = latidude
     bar_info['longtidude'] = longtidude
     bar_info['name'] = bar_data['Name']
-    bar_info['distance'] = get_distance_km(start_address, coordinates)
+    bar_info['distance'] = get_distance_km(start_address, coordinates, token)
     bar_info['address'] = bar_data['Address']
     logging.info(f"{bar_info['name']} - {bar_info['distance']}")
     return bar_info
@@ -51,15 +55,15 @@ def get_nearest_bars(bars, amount_of_bars=5):
     return bars[:amount_of_bars]
 
 
-@storage_json_io_decorator(storage_file_pathname='temporary_data.json')
-def get_all_bars_with_distance(bars, my_address):
-    return [get_bar_info(bar_data, my_address) for bar_data in bars]
+@storage_json_io_decorator(storage_file_pathname=TEMP_FILE)
+def get_all_bars_with_distance(bars, my_address, token):
+    return [get_bar_info(bar_data, my_address, token) for bar_data in bars]
 
 
-def add_marker(location, out_map, text):
+def add_marker(location, out_map, text, icon):
     if isinstance(location, tuple):
-        location = list(location)
-        folium.Marker(location, popup=text, tooltip=text).add_to(out_map)
+        folium.Marker(list(location), popup=text, tooltip=text, icon=icon).\
+            add_to(out_map)
 
 
 def transfer_html(temp_html_filepath='index.html'):
@@ -70,24 +74,28 @@ def transfer_html(temp_html_filepath='index.html'):
 def start_flask_server(func, host, port, rule='/'):
     activate_job = Flask(__name__)
     activate_job.add_url_rule(rule, '', func)
-    activate_job.run(host, port, debug=False)
+    activate_job.run(host, port, debug=True)
 
 
 def save_html_bars_map(bars, my_address, temp_html_filepath='index.html'):
-    my_location_marker = 'You are here'
+    my_location_marker = f'You are here!'
     zoom_param = 14
     out_map = folium.Map(location=my_address, zoom_start=zoom_param)
-    add_marker(location=my_address, out_map=out_map, text=my_location_marker)
+    icon = folium.Icon(color='red', icon='info-sign')
+    add_marker(location=my_address, out_map=out_map, text=my_location_marker,
+               icon=icon)
     for bar_info in bars:
         coords = bar_info['latidude'], bar_info['longtidude']
         bar_info_marker = '{} {}'.format(bar_info['name'], bar_info['address'])
-        add_marker(location=coords, out_map=out_map, text=bar_info_marker)
+        icon = folium.Icon(color='green', icon='cloud')
+        add_marker(location=coords, out_map=out_map, text=bar_info_marker,
+                   icon=icon)
     out_map.save(outfile=temp_html_filepath)
 
 
-def draw_nearest_bars_map(location_address, bars):
-    location_coordinates = get_coordinates(location_address, API_TOKEN)
-    all_bars = get_all_bars_with_distance(bars, location_coordinates)
+def draw_nearest_bars_map(location_address, bars, token):
+    location_coordinates = get_coordinates(location_address, token)
+    all_bars = get_all_bars_with_distance(bars, location_coordinates, token)
     nearest_bars = get_nearest_bars(all_bars)
     save_html_bars_map(bars=nearest_bars, my_address=location_coordinates)
 
@@ -101,27 +109,32 @@ def get_args_parser():
     return parser
 
 
-if __name__ == '__main__':
+def main():
     load_dotenv()
-    API_TOKEN = os.getenv("API_TOKEN")
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    sys.path.insert(0, os.path.split(dir_path)[0])
     logging.basicConfig(level=logging.INFO)
-    temp_file = 'temporary_data.json'
     args = get_args_parser().parse_args()
+    token = os.getenv("API_TOKEN")
 
     if args.test:
         logging.info(' Test mode: temp data from json file')
     else:
         logging.info(' Normal mode: delete temp files')
-        if os.path.exists(temp_file):
-            os.remove(temp_file)
+        if os.path.exists(TEMP_FILE):
+            os.remove(TEMP_FILE)
 
     my_address = ' '.join(args.my_address)
-    logging.info(f'my location: {my_address}, My coords: {get_coordinates(my_address, API_TOKEN)}')
+    logging.info(
+        f'location: {my_address}, coords: {get_coordinates(my_address, token)}')
     with open('bars_db.json', 'r', encoding='utf-8') as fl:
         bars_data = json.load(fl)
 
-    draw_nearest_bars_map(location_address=my_address, bars=bars_data)
-    #start_flask_server(func=transfer_html, host='0.0.0.0', port=8080)
-    start_flask_server(func=transfer_html, host='localhost', port=8000)
+    draw_nearest_bars_map(location_address=my_address, bars=bars_data, token=token)
+
+    if platform.system() != "Windows":
+        start_flask_server(func=transfer_html, host='0.0.0.0', port=80)
+    else:
+        start_flask_server(func=transfer_html, host='localhost', port=8001)
+
+
+if __name__ == '__main__':
+    main()
