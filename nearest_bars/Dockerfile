@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install -qy \
     apt-utils \
     python3-numpy \
     python3-psycopg2 \
-    python3-pip
+    python3-dotenv
 
 EXPOSE 8080
 WORKDIR /opt
