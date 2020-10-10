@@ -1,4 +1,4 @@
-FROM python:3.7.4
+FROM python:3.9.0
 
 RUN apt-get update && apt-get install -qy \
     apt-utils \
@@ -10,7 +10,7 @@ EXPOSE 8080
 WORKDIR /opt
 COPY . /opt
 
-RUN pip3 install --upgrade pip
-RUN pip3 install -r requirements.txt
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
 
-CMD ["python3", "main.py", "Москва Кленовый бульвар 9", "--test"]
+CMD ["python", "main.py", "Москва Кленовый бульвар 9", "--test"]
