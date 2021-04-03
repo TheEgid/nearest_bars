@@ -7,8 +7,7 @@ import logging
 import folium
 from flask import Flask
 from geopy import distance
-from dotenv import load_dotenv
-
+from environs import Env
 from services import storage_json_io_decorator
 
 
@@ -17,10 +16,13 @@ TEMP_FILE = 'temporary_data.json'
 
 def get_coordinates(_address, locationiq_org_token):
     url = f'https://locationiq.org/v1/search.php?'
-    params = {'q': _address,
-              'format': 'json',
-              'limit': 1,
-              'key': locationiq_org_token
+    params = {
+        'q': _address,
+        'format': 'json',
+        'limit': 1,
+        'key': locationiq_org_token,
+        'accept_language': 'RU',
+        'countrycodes': ['RU'],
     }
     response = requests.get(url=url, params=params)
     response.raise_for_status()
@@ -62,7 +64,7 @@ def get_all_bars_with_distance(bars, my_address, token):
 
 def add_marker(location, out_map, text, icon):
     if isinstance(location, tuple):
-        folium.Marker(list(location), popup=text, tooltip=text, icon=icon).\
+        folium.Marker(list(location), popup=text, tooltip=text, icon=icon). \
             add_to(out_map)
 
 
@@ -86,7 +88,7 @@ def save_html_bars_map(bars, my_address, temp_html_filepath='index.html'):
                icon=icon)
     for bar_info in bars:
         coords = bar_info['latidude'], bar_info['longtidude']
-        bar_info_marker = '{} {}'.format(bar_info['name'], bar_info['address'])
+        bar_info_marker = f"{bar_info['name']} - { bar_info['address']}"
         icon = folium.Icon(color='green', icon='cloud')
         add_marker(location=coords, out_map=out_map, text=bar_info_marker,
                    icon=icon)
@@ -110,10 +112,11 @@ def get_args_parser():
 
 
 def main():
-    load_dotenv()
+    env = Env()
+    env.read_env()
     logging.basicConfig(level=logging.INFO)
     args = get_args_parser().parse_args()
-    token = os.getenv("API_TOKEN")
+    token = env.str("API_TOKEN")
 
     if args.test:
         logging.info(' Test mode: temp data from json file')
