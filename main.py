@@ -10,7 +10,6 @@ from geopy import distance
 from environs import Env
 from services import storage_json_io_decorator
 
-
 TEMP_FILE = 'temporary_data.json'
 
 
@@ -88,7 +87,7 @@ def save_html_bars_map(bars, my_address, temp_html_filepath='index.html'):
                icon=icon)
     for bar_info in bars:
         coords = bar_info['latidude'], bar_info['longtidude']
-        bar_info_marker = f"{bar_info['name']} - { bar_info['address']}"
+        bar_info_marker = f"{bar_info['name']} - {bar_info['address']}"
         icon = folium.Icon(color='green', icon='cloud')
         add_marker(location=coords, out_map=out_map, text=bar_info_marker,
                    icon=icon)
@@ -131,12 +130,13 @@ def main():
     with open('bars_db.json', 'r', encoding='utf-8') as fl:
         bars_data = json.load(fl)
 
-    draw_nearest_bars_map(location_address=my_address, bars=bars_data, token=token)
+    draw_nearest_bars_map(location_address=my_address, bars=bars_data,
+                          token=token)
 
+    host, port = 'localhost', 8001
     if platform.system() != "Windows":
-        start_flask_server(func=transfer_html, host='0.0.0.0', port=80)
-    else:
-        start_flask_server(func=transfer_html, host='localhost', port=8001)
+        host, port = '0.0.0.0', 80
+    start_flask_server(func=transfer_html, host=host, port=port)
 
 
 if __name__ == '__main__':
