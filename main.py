@@ -83,14 +83,12 @@ def save_html_bars_map(bars, my_address, temp_html_filepath='index.html'):
     zoom_param = 14
     out_map = folium.Map(location=my_address, zoom_start=zoom_param)
     icon = folium.Icon(color='red', icon='info-sign')
-    add_marker(location=my_address, out_map=out_map, text=my_location_marker,
-               icon=icon)
+    add_marker(location=my_address, out_map=out_map, text=my_location_marker, icon=icon)
     for bar_info in bars:
         coords = bar_info['latidude'], bar_info['longtidude']
         bar_info_marker = f"{bar_info['name']} - {bar_info['address']}"
         icon = folium.Icon(color='green', icon='cloud')
-        add_marker(location=coords, out_map=out_map, text=bar_info_marker,
-                   icon=icon)
+        add_marker(location=coords, out_map=out_map, text=bar_info_marker, icon=icon)
     out_map.save(outfile=temp_html_filepath)
 
 
@@ -113,7 +111,7 @@ def get_args_parser():
 def main():
     env = Env()
     env.read_env()
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.ERROR)
     args = get_args_parser().parse_args()
     token = env.str("API_TOKEN")
 
@@ -125,13 +123,11 @@ def main():
             os.remove(TEMP_FILE)
 
     my_address = ' '.join(args.my_address)
-    logging.info(
-        f'location: {my_address}, coords: {get_coordinates(my_address, token)}')
+    # logging.info(f'location: {my_address}, coords: {get_coordinates(my_address, token)}')
     with open('bars_db.json', 'r', encoding='utf-8') as fl:
         bars_data = json.load(fl)
 
-    draw_nearest_bars_map(location_address=my_address, bars=bars_data,
-                          token=token)
+    draw_nearest_bars_map(location_address=my_address, bars=bars_data, token=token)
 
     host, port = 'localhost', 8001
     if platform.system() != "Windows":
