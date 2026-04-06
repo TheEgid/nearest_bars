@@ -3,20 +3,48 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import platform
 import time
 from functools import cache
 from pathlib import Path
 
-import folium
+import folium  # type: ignore
 import requests
 from environs import Env
-from flask import Flask
+from flask import Flask, request
 from geopy import distance
 from requests.exceptions import RequestException
 
 TEMP_FILE = Path("temporary_data.json")
 BARS_DB_FILE = Path("bars_db.json")
+
+
+# Production WSGI app
+
+app = Flask(__name__)
+
+
+@app.route("/health", methods=["GET"])
+def health():
+    return "OK", 200
+
+
+@app.route("/", methods=["GET"])
+def index_route():
+    address = request.args.get("address", "Москва Тучковская улица 9")
+    token = os.environ.get("API_TOKEN")
+    if not token:
+        return "API_TOKEN not configured", 500
+    try:
+        with open(BARS_DB_FILE, encoding="utf-8") as fl:
+            bars_data = json.load(fl)
+    except Exception as e:
+        logging.error("Bars data load error: %s", e)
+        return "Bars data unavailable", 500
+    draw_nearest_bars_map(location_address=address, bars_data=bars_data, token=token)
+    html = transfer_html()
+    return html
 
 
 @cache

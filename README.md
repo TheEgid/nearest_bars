@@ -12,10 +12,10 @@
 ### Установка и запуск с Docker
 
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
-Сервис будет доступен на порту 8001.
+Сервис будет доступен на порту 80.
 
 ### Установка и запуск без Docker
 
@@ -56,6 +56,19 @@ python main.py "Москва Тучковская улица 3" --test
 ```bash
 ruff check --fix .
 ```
+
+## PROD deployment (Docker + Gunicorn)
+
+- Контейнер запускается через Gunicorn как production WSGI сервер.
+- Соберите образ и запустите контейнер:
+
+```
+docker build -t nearest_bars_web .
+docker run -d -p 80:80 --env API_TOKEN=ваш_токен nearest_bars_web
+```
+
+- Приложение будет доступно на порту 80 хоста и будет обслуживаться Gunicorn (4 воркера).
+- В URL можно передавать address через query-параметр, например: http://localhost/?address=Москва%20на%20улица
 
 ### Переменные окружения
 

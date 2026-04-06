@@ -5,3 +5,4 @@ requests==2.33.1
 environs==15.0.0
 python-dotenv==1.2.2
 ruff==0.15.9
+gunicorn==25.3.0
