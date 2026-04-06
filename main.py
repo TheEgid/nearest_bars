@@ -1,139 +1,153 @@
-import os
+from __future__ import annotations
+
 import argparse
-import platform
 import json
-import requests
 import logging
+import platform
+import time
+from functools import cache
+from pathlib import Path
+
 import folium
+import requests
+from environs import Env
 from flask import Flask
 from geopy import distance
-from environs import Env
-from services import storage_json_io_decorator
+from requests.exceptions import RequestException
 
-TEMP_FILE = 'temporary_data.json'
+TEMP_FILE = Path("temporary_data.json")
+BARS_DB_FILE = Path("bars_db.json")
 
 
-def get_coordinates(_address, locationiq_org_token):
-    url = f'https://locationiq.org/v1/search.php?'
+@cache
+def get_coordinates(address: str, token: str) -> tuple[float, float] | None:
+    url = "https://locationiq.org/v1/search.php"
     params = {
-        'q': _address,
-        'format': 'json',
-        'limit': 1,
-        'key': locationiq_org_token,
-        'accept_language': 'RU',
-        'countrycodes': ['RU'],
+        "q": address,
+        "format": "json",
+        "limit": 1,
+        "key": token,
+        "accept_language": "RU",
+        "countrycodes": "RU",
     }
-    response = requests.get(url=url, params=params)
-    response.raise_for_status()
-    address = response.json()[0]
-    if not address:
+    retries = 2
+    backoff = 1
+    for attempt in range(retries + 1):
+        try:
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            if not data:
+                return None
+            return float(data[0]["lat"]), float(data[0]["lon"])
+        except (RequestException, ValueError, KeyError, IndexError) as e:
+            logging.error("Coordinate fetch failed (attempt %d/%d): %s", attempt + 1, retries + 1, e)
+            if attempt == retries:
+                return None
+            time.sleep(backoff)
+            backoff *= 2
+
+
+def get_distance_km(start: tuple[float, float], finish: tuple[float, float]) -> float:
+    return distance.distance(start, finish).km
+
+
+def get_bar_info(bar_data: dict, start_coords: tuple[float, float], token: str) -> dict | None:
+    try:
+        coords = list(bar_data["geoData"]["coordinates"])
+        coords.reverse()
+        lat, lon = coords
+    except (KeyError, TypeError, ValueError) as e:
+        logging.error("Invalid bar data, skipping: %s", e)
         return None
-    return float(address['lat']), float(address['lon'])
-
-
-def get_distance_km(start_address, finish_address, token):
-    if isinstance(finish_address, str):
-        finish_address = get_coordinates(finish_address, token)
-    return distance.distance(start_address, finish_address).km
-
-
-def get_bar_info(bar_data, start_address, token):
-    bar_info = {}
-    coordinates = list(bar_data['geoData']['coordinates'])
-    coordinates.reverse()
-    latidude, longtidude = coordinates
-    bar_info['latidude'] = latidude
-    bar_info['longtidude'] = longtidude
-    bar_info['name'] = bar_data['Name']
-    bar_info['distance'] = get_distance_km(start_address, coordinates, token)
-    bar_info['address'] = bar_data['Address']
-    logging.info(f"{bar_info['name']} - {bar_info['distance']}")
+    dist = get_distance_km(start_coords, coords)
+    logging.info(f"{bar_data['Name']} - {dist}")
+    bar_info = {
+        "latidude": lat,
+        "longtidude": lon,
+        "name": bar_data["Name"],
+        "distance": dist,
+        "address": bar_data["Address"],
+    }
     return bar_info
 
 
-def get_nearest_bars(bars, amount_of_bars=5):
-    bars.sort(key=lambda dictionary: dictionary['distance'], reverse=False)
-    return bars[:amount_of_bars]
+def get_nearest_bars(bars: list[dict], amount: int = 5) -> list[dict]:
+    return sorted(bars, key=lambda b: b["distance"])[:amount]
 
 
-@storage_json_io_decorator(storage_file_pathname=TEMP_FILE)
-def get_all_bars_with_distance(bars, my_address, token):
-    return [get_bar_info(bar_data, my_address, token) for bar_data in bars]
+def add_marker(
+    location: tuple[float, float],
+    out_map: folium.Map,
+    text: str,
+    icon: folium.Icon,
+) -> None:
+    folium.Marker(
+        location=list(location),
+        popup=text,
+        tooltip=text,
+        icon=icon,
+    ).add_to(out_map)
 
 
-def add_marker(location, out_map, text, icon):
-    if isinstance(location, tuple):
-        folium.Marker(list(location), popup=text, tooltip=text, icon=icon). \
-            add_to(out_map)
+def transfer_html(filepath: str = "index.html") -> str:
+    return Path(filepath).read_text(encoding="utf-8")
 
 
-def transfer_html(temp_html_filepath='index.html'):
-    with open(temp_html_filepath, encoding='utf-8') as html_file:
-        return html_file.read()
+def start_flask_server(func: callable, host: str, port: int) -> None:
+    app = Flask(__name__)
+    app.add_url_rule("/", "", func)
+    app.run(host, port, debug=True)
 
 
-def start_flask_server(func, host, port, rule='/'):
-    activate_job = Flask(__name__)
-    activate_job.add_url_rule(rule, '', func)
-    activate_job.run(host, port, debug=True)
+def save_html_bars_map(bars: list[dict], my_address: tuple[float, float]) -> None:
+    out_map = folium.Map(location=my_address, zoom_start=14)
+    add_marker(my_address, out_map, "You are here!", folium.Icon(color="red"))
+    for bar in bars:
+        coords = bar["latidude"], bar["longtidude"]
+        text = f"{bar['name']} - {bar['address']}"
+        add_marker(coords, out_map, text, folium.Icon(color="green", icon="cloud"))
+    out_map.save("index.html")
 
 
-def save_html_bars_map(bars, my_address, temp_html_filepath='index.html'):
-    my_location_marker = f'You are here!'
-    zoom_param = 14
-    out_map = folium.Map(location=my_address, zoom_start=zoom_param)
-    icon = folium.Icon(color='red', icon='info-sign')
-    add_marker(location=my_address, out_map=out_map, text=my_location_marker, icon=icon)
-    for bar_info in bars:
-        coords = bar_info['latidude'], bar_info['longtidude']
-        bar_info_marker = f"{bar_info['name']} - {bar_info['address']}"
-        icon = folium.Icon(color='green', icon='cloud')
-        add_marker(location=coords, out_map=out_map, text=bar_info_marker, icon=icon)
-    out_map.save(outfile=temp_html_filepath)
+def draw_nearest_bars_map(location_address: str, bars_data: list[dict], token: str) -> None:
+    coords = get_coordinates(location_address, token)
+    if coords is None:
+        raise ValueError(f"Could not find coordinates for: {location_address}")
+    all_bars = []
+    for bar_data in bars_data:
+        info = get_bar_info(bar_data, coords, token)
+        if info is not None:
+            all_bars.append(info)
+    nearest = get_nearest_bars(all_bars)
+    save_html_bars_map(nearest, coords)
 
 
-def draw_nearest_bars_map(location_address, bars, token):
-    location_coordinates = get_coordinates(location_address, token)
-    all_bars = get_all_bars_with_distance(bars, location_coordinates, token)
-    nearest_bars = get_nearest_bars(all_bars)
-    save_html_bars_map(bars=nearest_bars, my_address=location_coordinates)
-
-
-def get_args_parser():
+def get_args_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
-    parser.add_argument('my_address', type=str, nargs='+',
-                        help='My location address')
-    parser.add_argument('-t', '--test', action='store_true', default=False,
-                        help='Test mode')
+    parser.add_argument("my_address", nargs="+", help="My location address")
+    parser.add_argument("-t", "--test", action="store_true", help="Test mode")
     return parser
 
 
-def main():
+def main() -> None:
     env = Env()
     env.read_env()
     logging.basicConfig(level=logging.ERROR)
     args = get_args_parser().parse_args()
     token = env.str("API_TOKEN")
 
-    if args.test:
-        logging.info(' Test mode: temp data from json file')
-    else:
-        logging.info(' Normal mode: delete temp files')
-        if os.path.exists(TEMP_FILE):
-            os.remove(TEMP_FILE)
+    if not args.test and TEMP_FILE.exists():
+        TEMP_FILE.unlink()
 
-    my_address = ' '.join(args.my_address)
-    # logging.info(f'location: {my_address}, coords: {get_coordinates(my_address, token)}')
-    with open('bars_db.json', 'r', encoding='utf-8') as fl:
-        bars_data = json.load(fl)
+    my_address = " ".join(args.my_address)
+    bars_data = json.loads(BARS_DB_FILE.read_text(encoding="utf-8"))
 
-    draw_nearest_bars_map(location_address=my_address, bars=bars_data, token=token)
+    draw_nearest_bars_map(my_address, bars_data, token)
 
-    host, port = 'localhost', 8001
-    if platform.system() != "Windows":
-        host, port = '0.0.0.0', 80
-    start_flask_server(func=transfer_html, host=host, port=port)
+    host, port = ("localhost", 8001) if platform.system() == "Windows" else ("0.0.0.0", 80)
+    start_flask_server(transfer_html, host, port)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
